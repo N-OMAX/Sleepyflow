@@ -9,14 +9,47 @@ workflows:
     scripts:
       - name: Install XcodeGen
         script: brew install xcodegen
+
+      - name: Process App Icon (resize + remove alpha)
+        script: |
+          ICON_PATH="Sleepyflow/Assets.xcassets/AppIcon.appiconset/AppIcon1024.png"
+          echo "Original icon info:"
+          sips -g all "$ICON_PATH"
+          
+          # Step 1: Convert to BMP (no alpha support) to strip transparency
+          sips -s format bmp "$ICON_PATH" --out /tmp/icon_flat.bmp
+          
+          # Step 2: Convert back to PNG at exactly 1024x1024
+          sips -s format png -z 1024 1024 /tmp/icon_flat.bmp --out "$ICON_PATH"
+          
+          # Also process the AppLogo for in-app use
+          LOGO_PATH="Sleepyflow/Assets.xcassets/AppLogo.imageset/AppLogo.png"
+          sips -z 512 512 "$LOGO_PATH" --out "$LOGO_PATH"
+          
+          echo "Processed icon info:"
+          sips -g all "$ICON_PATH"
+
       - name: Generate Xcode project
         script: xcodegen generate
+
       - name: Build iOS App
-        script: xcodebuild build -project Sleepyflow.xcodeproj -scheme Sleepyflow -sdk iphoneos -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CONFIGURATION_BUILD_DIR=$(PWD)/build/Release-iphoneos
+        script: |
+          xcodebuild build \
+            -project Sleepyflow.xcodeproj \
+            -scheme Sleepyflow \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR=$(PWD)/build/Release-iphoneos \
+            2>&1 | tail -100
+
       - name: Package to IPA
         script: |
           mkdir -p Payload
           cp -R build/Release-iphoneos/Sleepyflow.app Payload/
           zip -qr Sleepyflow-unsigned.ipa Payload
+
     artifacts:
       - Sleepyflow-unsigned.ipa
