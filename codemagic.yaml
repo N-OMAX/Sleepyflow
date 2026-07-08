@@ -12,6 +12,11 @@ workflows:
       - name: Generate Xcode project
         script: xcodegen generate
       - name: Build iOS App
-        script: xcodebuild build -project Sleepyflow.xcodeproj -scheme Sleepyflow -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+        script: xcodebuild build -project Sleepyflow.xcodeproj -scheme Sleepyflow -sdk iphoneos -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CONFIGURATION_BUILD_DIR=$(PWD)/build/Release-iphoneos
+      - name: Package to IPA
+        script: |
+          mkdir -p Payload
+          cp -R build/Release-iphoneos/Sleepyflow.app Payload/
+          zip -qr Sleepyflow-unsigned.ipa Payload
     artifacts:
-      - build/ios/iphonesimulator/*.app
+      - Sleepyflow-unsigned.ipa
