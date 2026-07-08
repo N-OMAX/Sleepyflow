@@ -6,153 +6,213 @@ struct ContentView: View {
     @State private var selectedAlarmTime = Date()
     @State private var showDatePicker = false
     @State private var showStats = false
+    @State private var showResetConfirm = false
     
     var body: some View {
         ZStack {
-            // Background Color
-            AppColors.background.ignoresSafeArea()
+            // Deep black base
+            Color.black.ignoresSafeArea()
             
-            // Subtle ambient background gradient
-            RadialGradient(gradient: Gradient(colors: [AppColors.accentPurple.opacity(0.3), .clear]), center: .top, startRadius: 0, endRadius: 500)
-                .ignoresSafeArea()
+            // Purple ambient glow top
+            RadialGradient(
+                gradient: Gradient(colors: [
+                    AppColors.accentPurple.opacity(0.35),
+                    Color.clear
+                ]),
+                center: .init(x: 0.5, y: -0.1),
+                startRadius: 0,
+                endRadius: 500
+            )
+            .ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 30) {
+            // Bottom glow
+            RadialGradient(
+                gradient: Gradient(colors: [
+                    AppColors.accentLightPurple.opacity(0.15),
+                    Color.clear
+                ]),
+                center: .init(x: 0.2, y: 1.2),
+                startRadius: 0,
+                endRadius: 400
+            )
+            .ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
                     
-                    // Header
-                    HStack {
-                        VStack(alignment: .leading, spacing: 8) {
+                    // MARK: Header
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text("Sleepyflow")
-                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
-                                .shadow(color: AppColors.accentPurple, radius: 10, x: 0, y: 0)
-                            
-                            Text("Designed by Joshua Pawlowski")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.6))
+                            Text("by Joshua Pawlowski")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.white.opacity(0.4))
+                                .tracking(1)
                         }
                         
                         Spacer()
                         
-                        // Navigation to Stats
                         Button(action: { showStats = true }) {
                             Image(systemName: "calendar")
-                                .font(.title)
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.white)
-                                .padding(12)
-                                .glassmorphic()
+                                .frame(width: 44, height: 44)
+                                .glassmorphic(cornerRadius: 14)
                         }
                     }
-                    .padding(.top, 40)
+                    .padding(.top, 60)
                     
-                    // Sleep Tracking Section
+                    // MARK: Sleep Timer Card
                     VStack(spacing: 20) {
+                        // Title row with reset button
                         HStack {
-                            Text("Sleep Tracker")
-                                .font(.title2.bold())
-                                .foregroundColor(.white)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Sleep Tracker")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.white)
+                                
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(statusColor())
+                                        .frame(width: 7, height: 7)
+                                    Text(statusText())
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                            }
                             
                             Spacer()
                             
-                            // Reset Button
-                            Button(action: { tracker.resetSession() }) {
+                            // Reset button
+                            Button(action: { showResetConfirm = true }) {
                                 Image(systemName: "arrow.counterclockwise")
-                                    .foregroundColor(.red)
-                                    .padding(8)
-                                    .background(Color.red.opacity(0.1))
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Color.red.opacity(0.9))
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.red.opacity(0.12))
                                     .clipShape(Circle())
+                                    .overlay(Circle().stroke(Color.red.opacity(0.2), lineWidth: 1))
+                            }
+                            .confirmationDialog("Tracker zurücksetzen?", isPresented: $showResetConfirm, titleVisibility: .visible) {
+                                Button("Zurücksetzen", role: .destructive) { tracker.resetSession() }
+                                Button("Abbrechen", role: .cancel) {}
+                            } message: {
+                                Text("Die aktuelle Session wird beendet. Die gespeicherten Statistiken bleiben erhalten.")
                             }
                         }
                         
+                        // Live Timer Display
                         let duration = tracker.currentLiveSleepDuration()
-                        let hours = Int(duration) / 3600
-                        let minutes = (Int(duration) % 3600) / 60
-                        let seconds = Int(duration) % 60
+                        let h = Int(duration) / 3600
+                        let m = (Int(duration) % 3600) / 60
+                        let s = Int(duration) % 60
                         
-                        Text(String(format: "%02d:%02d:%02d", hours, minutes, seconds))
-                            .font(.system(size: 48, weight: .semibold, design: .monospaced))
-                            .foregroundColor(AppColors.accentLightPurple)
-                            .padding()
-                            .glassmorphic()
+                        VStack(spacing: 8) {
+                            Text(String(format: "%02d:%02d:%02d", h, m, s))
+                                .font(.system(size: 52, weight: .thin, design: .monospaced))
+                                .foregroundColor(.white)
+                                .shadow(color: AppColors.accentGlow, radius: tracker.currentState == .sleeping ? 20 : 0, x: 0, y: 0)
+                            
+                            if tracker.currentState == .sleeping, let start = tracker.currentSessionStart {
+                                Text("Seit \(timeString(start))")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white.opacity(0.45))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
                         
-                        Text("Status: \(statusText())")
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        // Tracking Controls
-                        VStack(spacing: 15) {
-                            if tracker.currentState == .awake {
-                                Button("Go to Sleep") {
-                                    tracker.startSleeping()
-                                }
-                                .buttonStyle(PrimaryButtonStyle())
+                        // Control Buttons
+                        VStack(spacing: 12) {
+                            switch tracker.currentState {
+                            case .awake:
+                                Button("Schlafen gehen") { tracker.startSleeping() }
+                                    .buttonStyle(PrimaryButtonStyle())
                                 
-                            } else if tracker.currentState == .sleeping {
-                                Button("Wake Up (In Night)") {
-                                    tracker.wakeUpInNight()
-                                }
-                                .buttonStyle(SecondaryButtonStyle())
+                            case .sleeping:
+                                Button("In der Nacht aufgewacht") { tracker.wakeUpInNight() }
+                                    .buttonStyle(SecondaryButtonStyle())
+                                Button("Aufwachen (Final)") { tracker.finalWakeUp() }
+                                    .buttonStyle(PrimaryButtonStyle())
                                 
-                                Button("Final Wake Up") {
-                                    tracker.finalWakeUp()
-                                }
-                                .buttonStyle(PrimaryButtonStyle())
-                                
-                            } else if tracker.currentState == .interrupted {
-                                Button("Resume Sleep") {
-                                    tracker.resumeSleeping()
-                                }
-                                .buttonStyle(PrimaryButtonStyle())
-                                
-                                Button("Final Wake Up") {
-                                    tracker.finalWakeUp()
-                                }
-                                .buttonStyle(SecondaryButtonStyle())
+                            case .interrupted:
+                                Button("Wieder schlafen gehen") { tracker.resumeSleeping() }
+                                    .buttonStyle(PrimaryButtonStyle())
+                                Button("Aufwachen (Final)") { tracker.finalWakeUp() }
+                                    .buttonStyle(SecondaryButtonStyle())
                             }
                         }
                     }
-                    .padding()
+                    .padding(20)
                     .glassmorphic()
                     
-                    // Alarms Section
-                    VStack(spacing: 20) {
-                        Text("Alarms")
-                            .font(.title2.bold())
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    // MARK: Alarm Card
+                    VStack(spacing: 16) {
+                        HStack {
+                            Image(systemName: "alarm")
+                                .font(.system(size: 18))
+                                .foregroundColor(AppColors.accentLightPurple)
+                            Text("Wecker stellen")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.white)
+                            Spacer()
+                        }
                         
-                        HStack(spacing: 15) {
-                            Button("+8 Hours Alarm") {
-                                alarmManager.scheduleAlarm(inHours: 8)
+                        HStack(spacing: 12) {
+                            Button(action: { alarmManager.scheduleAlarm(inHours: 8) }) {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .font(.system(size: 22))
+                                    Text("+ 8 Stunden")
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 18)
+                                .glassmorphic(cornerRadius: 16)
                             }
-                            .buttonStyle(SecondaryButtonStyle())
                             
-                            Button("Set Manual Time") {
-                                showDatePicker.toggle()
+                            Button(action: { showDatePicker.toggle() }) {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 22))
+                                    Text("Manuelle Zeit")
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 18)
+                                .glassmorphic(cornerRadius: 16)
                             }
-                            .buttonStyle(SecondaryButtonStyle())
                         }
                         
                         if showDatePicker {
-                            DatePicker("Select Time", selection: $selectedAlarmTime, displayedComponents: .hourAndMinute)
+                            VStack(spacing: 12) {
+                                DatePicker(
+                                    "",
+                                    selection: $selectedAlarmTime,
+                                    displayedComponents: .hourAndMinute
+                                )
                                 .datePickerStyle(WheelDatePickerStyle())
                                 .labelsHidden()
                                 .colorScheme(.dark)
-                                .background(Color.white.opacity(0.05).cornerRadius(15))
-                            
-                            Button("Schedule Alarm") {
-                                alarmManager.scheduleAlarm(at: selectedAlarmTime)
-                                showDatePicker = false
+                                
+                                Button("Wecker setzen") {
+                                    alarmManager.scheduleAlarm(at: selectedAlarmTime)
+                                    showDatePicker = false
+                                }
+                                .buttonStyle(PrimaryButtonStyle())
                             }
-                            .buttonStyle(PrimaryButtonStyle())
                         }
                     }
-                    .padding()
+                    .padding(20)
                     .glassmorphic()
                     
+                    Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 40)
             }
         }
         .preferredColorScheme(.dark)
@@ -163,12 +223,24 @@ struct ContentView: View {
     
     private func statusText() -> String {
         switch tracker.currentState {
-        case .awake:
-            return "Awake"
-        case .sleeping:
-            return "Sleeping"
-        case .interrupted:
-            return "Interrupted (Awake in night)"
+        case .awake: return "Wach"
+        case .sleeping: return "Schläft gerade"
+        case .interrupted: return "In der Nacht aufgewacht"
         }
+    }
+    
+    private func statusColor() -> Color {
+        switch tracker.currentState {
+        case .awake: return .gray
+        case .sleeping: return .green
+        case .interrupted: return .orange
+        }
+    }
+    
+    private func timeString(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 }
