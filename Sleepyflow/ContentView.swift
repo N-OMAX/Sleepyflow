@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var alarmManager = AlarmManager()
     @State private var selectedAlarmTime = Date()
     @State private var showDatePicker = false
+    @State private var showStats = false
     
     var body: some View {
         ZStack {
@@ -19,24 +20,49 @@ struct ContentView: View {
                 VStack(spacing: 30) {
                     
                     // Header
-                    VStack(spacing: 8) {
-                        Text("Sleepyflow")
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: AppColors.accentPurple, radius: 10, x: 0, y: 0)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Sleepyflow")
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: AppColors.accentPurple, radius: 10, x: 0, y: 0)
+                            
+                            Text("Designed by Joshua Pawlowski")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.6))
+                        }
                         
-                        Text("Designed by Joshua Pawlowski")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
+                        Spacer()
+                        
+                        // Navigation to Stats
+                        Button(action: { showStats = true }) {
+                            Image(systemName: "calendar")
+                                .font(.title)
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .glassmorphic()
+                        }
                     }
                     .padding(.top, 40)
                     
                     // Sleep Tracking Section
                     VStack(spacing: 20) {
-                        Text("Sleep Tracker")
-                            .font(.title2.bold())
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        HStack {
+                            Text("Sleep Tracker")
+                                .font(.title2.bold())
+                                .foregroundColor(.white)
+                            
+                            Spacer()
+                            
+                            // Reset Button
+                            Button(action: { tracker.resetSession() }) {
+                                Image(systemName: "arrow.counterclockwise")
+                                    .foregroundColor(.red)
+                                    .padding(8)
+                                    .background(Color.red.opacity(0.1))
+                                    .clipShape(Circle())
+                            }
+                        }
                         
                         let duration = tracker.currentLiveSleepDuration()
                         let hours = Int(duration) / 3600
@@ -130,6 +156,9 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showStats) {
+            SleepStatsView(tracker: tracker)
+        }
     }
     
     private func statusText() -> String {
@@ -141,11 +170,5 @@ struct ContentView: View {
         case .interrupted:
             return "Interrupted (Awake in night)"
         }
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
     }
 }

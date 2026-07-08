@@ -1,13 +1,14 @@
 import Foundation
 import Combine
 
-enum SleepState {
+enum SleepState: String, Codable {
     case awake
     case sleeping
-    case interrupted // awake during the night
+    case interrupted
 }
 
-struct SleepInterval {
+struct SleepInterval: Codable, Identifiable {
+    var id = UUID()
     let start: Date
     let end: Date
     
@@ -16,26 +17,76 @@ struct SleepInterval {
     }
 }
 
+// A daily summary to show in the calendar
+struct DailySleepStats: Codable, Identifiable {
+    var id = UUID()
+    let date: Date // e.g. start of the day
+    let totalDuration: TimeInterval
+}
+
 class SleepTracker: ObservableObject {
-    @Published var currentState: SleepState = .awake
-    @Published var currentSessionStart: Date?
-    @Published var sleepIntervals: [SleepInterval] = []
+    @Published var currentState: SleepState = .awake {
+        didSet { UserDefaults.standard.set(currentState.rawValue, forKey: "currentState") }
+    }
     
-    // Total sleep duration for the current night
-    @Published var totalSleepDuration: TimeInterval = 0
+    @Published var currentSessionStart: Date? {
+        didSet {
+            if let date = currentSessionStart {
+                UserDefaults.standard.set(date, forKey: "currentSessionStart")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "currentSessionStart")
+            }
+        }
+    }
+    
+    @Published var totalSleepDuration: TimeInterval = 0 {
+        didSet { UserDefaults.standard.set(totalSleepDuration, forKey: "totalSleepDuration") }
+    }
+    
+    @Published var dailyStats: [DailySleepStats] = []
     
     private var timer: AnyCancellable?
+    
+    init() {
+        loadState()
+        loadStats()
+        if currentState != .awake {
+            startTimer()
+        }
+    }
+    
+    private func loadState() {
+        if let stateString = UserDefaults.standard.string(forKey: "currentState"),
+           let state = SleepState(rawValue: stateString) {
+            currentState = state
+        }
+        currentSessionStart = UserDefaults.standard.object(forKey: "currentSessionStart") as? Date
+        totalSleepDuration = UserDefaults.standard.double(forKey: "totalSleepDuration")
+    }
+    
+    private func loadStats() {
+        if let data = UserDefaults.standard.data(forKey: "dailyStats"),
+           let stats = try? JSONDecoder().decode([DailySleepStats].self, from: data) {
+            dailyStats = stats
+        }
+    }
+    
+    private func saveStats() {
+        if let data = try? JSONEncoder().encode(dailyStats) {
+            UserDefaults.standard.set(data, forKey: "dailyStats")
+        }
+    }
     
     func startSleeping() {
         currentState = .sleeping
         currentSessionStart = Date()
+        totalSleepDuration = 0
         startTimer()
     }
     
     func wakeUpInNight() {
         guard currentState == .sleeping, let start = currentSessionStart else { return }
         let end = Date()
-        sleepIntervals.append(SleepInterval(start: start, end: end))
         totalSleepDuration += end.timeIntervalSince(start)
         
         currentState = .interrupted
@@ -53,7 +104,6 @@ class SleepTracker: ObservableObject {
     func finalWakeUp() {
         if currentState == .sleeping, let start = currentSessionStart {
             let end = Date()
-            sleepIntervals.append(SleepInterval(start: start, end: end))
             totalSleepDuration += end.timeIntervalSince(start)
         }
         
@@ -61,20 +111,30 @@ class SleepTracker: ObservableObject {
         currentSessionStart = nil
         stopTimer()
         
-        // At this point, we could save the sleepIntervals and totalSleepDuration to HealthKit or UserDefaults
+        // Save to daily stats
+        if totalSleepDuration > 0 {
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: Date()) // Saves it for today
+            let newStat = DailySleepStats(date: startOfDay, totalDuration: totalSleepDuration)
+            dailyStats.append(newStat)
+            saveStats()
+        }
+        
+        totalSleepDuration = 0
     }
     
     func resetSession() {
         currentState = .awake
         currentSessionStart = nil
-        sleepIntervals.removeAll()
         totalSleepDuration = 0
         stopTimer()
     }
     
     private func startTimer() {
+        // Runs even when app is active to update UI.
+        // When in background, UI doesn't update but `currentLiveSleepDuration` will be correct upon reopening.
         timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect().sink { [weak self] _ in
-            self?.objectWillChange.send() // Triggers UI update to show elapsed time live
+            self?.objectWillChange.send()
         }
     }
     
