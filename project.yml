@@ -1,0 +1,24 @@
+name: Sleepyflow
+options:
+  bundleIdPrefix: com.joshuapawlowski
+  deploymentTarget:
+    iOS: 16.0
+targets:
+  Sleepyflow:
+    type: application
+    platform: iOS
+    sources: [Sleepyflow]
+    info:
+      path: Sleepyflow/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.joshuapawlowski.sleepyflow
+        DEVELOPMENT_TEAM: ""
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark

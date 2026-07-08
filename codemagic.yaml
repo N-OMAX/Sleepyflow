@@ -1,0 +1,17 @@
+workflows:
+  ios-native-workflow:
+    name: Sleepyflow iOS App
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Build iOS App
+        script: xcodebuild build -project Sleepyflow.xcodeproj -scheme Sleepyflow -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+    artifacts:
+      - build/ios/iphonesimulator/*.app
