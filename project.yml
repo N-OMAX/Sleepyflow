@@ -12,6 +12,7 @@ targets:
       path: Sleepyflow/Info.plist
       properties:
         UILaunchScreen: {}
+        NSAlarmKitUsageDescription: "Sleepyflow braucht diese Berechtigung, um deinen Weckalarm zuverlässig auszulösen — auch bei stummgeschaltetem iPhone oder aktivem Fokus."
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations:

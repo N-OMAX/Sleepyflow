@@ -156,6 +156,7 @@ struct ContentView: View {
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                             Spacer()
+                            AlarmStatusBadge(alarmManager: alarmManager)
                         }
                         
                         HStack(spacing: 12) {
@@ -240,5 +241,28 @@ struct ContentView: View {
         f.locale = Locale(identifier: "de_DE")
         f.dateFormat = "HH:mm"
         return f.string(from: date)
+    }
+}
+
+// MARK: - Alarm status badge
+// Shows whether Sleepyflow is currently using a real system alarm
+// (AlarmKit, iOS 26+, breaks through Silent/Focus like the Clock app) or the
+// older notification-based fallback (iOS < 26, or permission denied).
+struct AlarmStatusBadge: View {
+    @ObservedObject var alarmManager: AlarmManager
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(alarmManager.usesRealSystemAlarm ? Color.green : Color.orange)
+                .frame(width: 6, height: 6)
+            Text(alarmManager.usesRealSystemAlarm ? "System-Alarm" : "Nur Benachrichtigung")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.white.opacity(0.06))
+        .clipShape(Capsule())
     }
 }
