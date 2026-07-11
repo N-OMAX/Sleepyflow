@@ -90,8 +90,11 @@ class AlarmManager: ObservableObject {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         if #available(iOS 26.0, *) {
             // AlarmKit has no "cancel all" — cancel each alarm we own individually.
-            for alarm in AlarmKit.AlarmManager.shared.alarms {
-                try? AlarmKit.AlarmManager.shared.cancel(id: alarm.id)
+            // `.alarms` can throw in this SDK version, so guard with try?.
+            if let alarms = try? AlarmKit.AlarmManager.shared.alarms {
+                for alarm in alarms {
+                    try? AlarmKit.AlarmManager.shared.cancel(id: alarm.id)
+                }
             }
         }
     }
