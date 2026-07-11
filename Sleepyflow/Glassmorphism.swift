@@ -37,6 +37,47 @@ extension View {
     func glassmorphic(cornerRadius: CGFloat = 20) -> some View {
         self.modifier(GlassCard(cornerRadius: cornerRadius))
     }
+
+    /// For small, floating navigation-style controls only (icon buttons,
+    /// toolbar chips) — NOT for content cards. On iOS 26+ this renders real
+    /// Liquid Glass; on older iOS it falls back to the existing blur style,
+    /// so the app keeps building/looking right if the deployment target
+    /// ever needs to go below 26 again.
+    @ViewBuilder
+    func floatingGlass(cornerRadius: CGFloat = 14, interactive: Bool = true) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(
+                interactive ? .regular.interactive() : .regular,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+        } else {
+            self.glassmorphic(cornerRadius: cornerRadius)
+        }
+    }
+
+    /// Same idea, but for perfectly circular controls (e.g. reset button).
+    @ViewBuilder
+    func floatingGlassCircle(interactive: Bool = true) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(interactive ? .regular.interactive() : .regular, in: .circle)
+        } else {
+            self.glassmorphic(cornerRadius: 999)
+        }
+    }
+
+    /// Destructive-style circular button (red tint): Liquid Glass on iOS 26,
+    /// same red-tinted circle as before on older iOS.
+    @ViewBuilder
+    func resetButtonBackground() -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.tint(.red.opacity(0.5)).interactive(), in: .circle)
+        } else {
+            self
+                .background(Color.red.opacity(0.12))
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.red.opacity(0.2), lineWidth: 1))
+        }
+    }
 }
 
 // MARK: - Visual Effect Blur (UIKit bridge)

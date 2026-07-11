@@ -59,8 +59,8 @@ struct ContentView: View {
                                 .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.white)
                                 .frame(width: 44, height: 44)
-                                .glassmorphic(cornerRadius: 14)
                         }
+                        .floatingGlass(cornerRadius: 14)
                     }
                     .padding(.top, 60)
                     
@@ -91,10 +91,8 @@ struct ContentView: View {
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(Color.red.opacity(0.9))
                                     .frame(width: 40, height: 40)
-                                    .background(Color.red.opacity(0.12))
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(Color.red.opacity(0.2), lineWidth: 1))
                             }
+                            .resetButtonBackground()
                             .confirmationDialog("Tracker zurücksetzen?", isPresented: $showResetConfirm, titleVisibility: .visible) {
                                 Button("Zurücksetzen", role: .destructive) { tracker.resetSession() }
                                 Button("Abbrechen", role: .cancel) {}
@@ -171,8 +169,8 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 18)
-                                .glassmorphic(cornerRadius: 16)
                             }
+                            .floatingGlass(cornerRadius: 16)
                             
                             Button(action: { showDatePicker.toggle() }) {
                                 VStack(spacing: 4) {
@@ -184,8 +182,8 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 18)
-                                .glassmorphic(cornerRadius: 16)
                             }
+                            .floatingGlass(cornerRadius: 16)
                         }
                         
                         if showDatePicker {
