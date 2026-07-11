@@ -34,6 +34,7 @@ workflows:
 
       - name: Build iOS App
         script: |
+          set -o pipefail
           xcodebuild build \
             -project Sleepyflow.xcodeproj \
             -scheme Sleepyflow \
@@ -43,13 +44,27 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             CONFIGURATION_BUILD_DIR=$(PWD)/build/Release-iphoneos \
-            2>&1 | tail -100
+            2>&1 | tee build.log | tail -200
+          BUILD_STATUS=$?
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "❌ xcodebuild failed with status $BUILD_STATUS — see full log below:"
+            cat build.log
+            exit 1
+          fi
+          if [ ! -f "build/Release-iphoneos/Sleepyflow.app/Info.plist" ]; then
+            echo "❌ Build reported success but Sleepyflow.app/Info.plist is missing — aborting instead of packaging a broken IPA."
+            exit 1
+          fi
+          echo "✅ Build OK, Info.plist present."
 
       - name: Package to IPA
         script: |
+          set -e
+          rm -rf Payload
           mkdir -p Payload
           cp -R build/Release-iphoneos/Sleepyflow.app Payload/
           zip -qr Sleepyflow-unsigned.ipa Payload
 
     artifacts:
       - Sleepyflow-unsigned.ipa
+      - build.log
