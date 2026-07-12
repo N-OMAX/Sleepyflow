@@ -159,7 +159,7 @@ struct SplashView: View {
             // Raced against a small minimum duration so the loading screen
             // never just flashes for a few milliseconds.
             async let sessionCheck: Void = authManager.refreshSession()
-            async let minimumDuration: Void = try? Task.sleep(nanoseconds: 900_000_000)
+            async let minimumDuration = try? Task.sleep(nanoseconds: 900_000_000)
             _ = await (sessionCheck, minimumDuration)
 
             loadingStatus = "Lade deine Daten …"
