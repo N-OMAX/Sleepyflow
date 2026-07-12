@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct ContentView: View {
+    @ObservedObject var authManager: AuthManager
     @StateObject private var tracker = SleepTracker()
     @StateObject private var alarmManager = AlarmManager()
     @State private var selectedAlarmTime = Date()
     @State private var showDatePicker = false
     @State private var showStats = false
     @State private var showResetConfirm = false
+    @State private var showProfileMenu = false
     
     var body: some View {
         ZStack {
@@ -43,26 +45,44 @@ struct ContentView: View {
                     // MARK: Header
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
+                            Text(greeting)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.white.opacity(0.55))
                             Text("Sleepyflow")
                                 .font(.system(size: 34, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
-                            Text("by Joshua Pawlowski")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(.white.opacity(0.4))
-                                .tracking(1)
                         }
                         
                         Spacer()
-                        
-                        Button(action: { showStats = true }) {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
+
+                        HStack(spacing: 10) {
+                            Button(action: { showStats = true }) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .floatingGlass(cornerRadius: 14)
+
+                            Button(action: { showProfileMenu = true }) {
+                                Text(initials)
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .floatingGlassCircle()
+                            .confirmationDialog("Profil", isPresented: $showProfileMenu, titleVisibility: .visible) {
+                                Button("Abmelden", role: .destructive) { authManager.signOut() }
+                                Button("Abbrechen", role: .cancel) {}
+                            } message: {
+                                Text(authManager.displayName.isEmpty ? "Sleepyflow" : authManager.displayName)
+                            }
                         }
-                        .floatingGlass(cornerRadius: 14)
                     }
                     .padding(.top, 60)
+
+                    // MARK: Quick stats (last night + streak)
+                    QuickStatsRow(tracker: tracker)
                     
                     // MARK: Sleep Timer Card
                     VStack(spacing: 20) {
@@ -205,6 +225,12 @@ struct ContentView: View {
                                 .buttonStyle(PrimaryButtonStyle())
                             }
                         }
+
+                        if !alarmManager.scheduledAlarms.isEmpty {
+                            Divider().background(Color.white.opacity(0.1))
+                        }
+
+                        AlarmListView(alarmManager: alarmManager)
                     }
                     .padding(20)
                     .glassmorphic()
@@ -215,11 +241,35 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear { alarmManager.refreshAlarms() }
         .sheet(isPresented: $showStats) {
             SleepStatsView(tracker: tracker)
         }
     }
     
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let timeGreeting: String
+        switch hour {
+        case 5..<11: timeGreeting = "Guten Morgen"
+        case 11..<17: timeGreeting = "Guten Tag"
+        case 17..<22: timeGreeting = "Guten Abend"
+        default: timeGreeting = "Gute Nacht"
+        }
+        let firstName = authManager.displayName.split(separator: " ").first.map(String.init)
+        if let firstName = firstName, !firstName.isEmpty {
+            return "\(timeGreeting), \(firstName)"
+        }
+        return timeGreeting
+    }
+
+    private var initials: String {
+        let parts = authManager.displayName.split(separator: " ")
+        let letters = parts.prefix(2).compactMap { $0.first }
+        if letters.isEmpty { return "🙂" }
+        return String(letters).uppercased()
+    }
+
     private func statusText() -> String {
         switch tracker.currentState {
         case .awake: return "Wach"
@@ -264,5 +314,77 @@ struct AlarmStatusBadge: View {
         .padding(.vertical, 4)
         .background(Color.white.opacity(0.06))
         .clipShape(Capsule())
+    }
+}
+
+// MARK: - Quick stats row on the home screen
+// Small personalized snapshot: last night's total sleep + current streak,
+// so you see something useful before even opening the calendar.
+struct QuickStatsRow: View {
+    @ObservedObject var tracker: SleepTracker
+
+    private var lastNightDuration: TimeInterval {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return 0 }
+        let todayTotal = tracker.dayStat(for: today)?.totalDuration ?? 0
+        if todayTotal > 0 { return todayTotal }
+        return tracker.dayStat(for: yesterday)?.totalDuration ?? 0
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            QuickStatTile(
+                icon: "moon.zzz.fill",
+                value: durationString(lastNightDuration),
+                label: "Letzte Nacht",
+                tint: AppColors.accentLightPurple
+            )
+            QuickStatTile(
+                icon: "flame.fill",
+                value: "\(tracker.currentStreak())",
+                label: tracker.currentStreak() == 1 ? "Tag Serie" : "Tage Serie",
+                tint: .orange
+            )
+        }
+    }
+
+    private func durationString(_ duration: TimeInterval) -> String {
+        guard duration > 0 else { return "–" }
+        let h = Int(duration) / 3600
+        let m = (Int(duration) % 3600) / 60
+        return String(format: "%dh %02dm", h, m)
+    }
+}
+
+private struct QuickStatTile: View {
+    let icon: String
+    let value: String
+    let label: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.15))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .glassmorphic(cornerRadius: 16)
     }
 }

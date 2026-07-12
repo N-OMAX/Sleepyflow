@@ -18,6 +18,11 @@ targets:
           UISceneConfigurations:
             UIWindowSceneSessionRoleApplication:
               - UISceneConfigurationName: Default Configuration
+    entitlements:
+      path: Sleepyflow/Sleepyflow.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.joshuapawlowski.sleepyflow
